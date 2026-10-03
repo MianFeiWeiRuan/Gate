@@ -1,7 +1,7 @@
 name: VPN Gate Node Check
 
 on:
-  # 每 2 小时运行一次（UTC 偶数点：0、2、4…22）
+  # 每 2 小时运行一次（UTC 偶数点 = 北京时间偶数点）
   schedule:
     - cron: "0 */2 * * *"
   workflow_dispatch:
@@ -44,9 +44,10 @@ jobs:
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           mkdir -p .keepalive
-          date -u +"%Y-%m-%dT%H:%M:%SZ" > .keepalive/last_run.txt
+          NOW=$(TZ='Asia/Shanghai' date +"%Y-%m-%d %H:%M:%S (CST)")
+          echo "$NOW" > .keepalive/last_run.txt
           git add .keepalive/last_run.txt
-          git commit -m "chore: keep-alive $(date -u +%Y-%m-%dT%H:%M:%SZ)" || echo "无变化，跳过"
+          git commit -m "chore: keep-alive $NOW" || echo "无变化，跳过"
           git push
 
       - name: Configure Pages
