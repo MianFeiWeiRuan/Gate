@@ -1,13 +1,13 @@
 name: VPN Gate Node Check
 
 on:
-  # 每 30 分钟运行一次
+  # 每 30 分钟运行一次（UTC 时间）
   schedule:
     - cron: "*/30 * * * *"
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write      # 改：keep-alive commit 需要写权限
   pages: write
   id-token: write
 
@@ -17,7 +17,6 @@ concurrency:
 
 jobs:
   check:
-    # 固定 Ubuntu 24.04，避免 ubuntu-latest 在 2026-10-19 后迁移到 Ubuntu 26
     runs-on: ubuntu-24.04
     timeout-minutes: 30
 
@@ -36,34 +35,26 @@ jobs:
       - name: Get VPN Gate nodes + check via Cloudflare Worker + build page
         run: python vpngate.py
         env:
-          # 已部署的检测 Worker
           CHECK_WORKER: "https://fco.us.ci/check?sstp=vpn:vpn@"
           CHECK_CONCURRENCY: "32"
           CHECK_TIMEOUT: "90"
 
-      - name: Ensure GitHub Pages is enabled (one-time auto setup)
+      # ===== keep-alive：每次运行都提交一次，防止仓库 60 天休眠 =====
+      - name: Keep-alive commit
         run: |
-          code=$(curl -s -o /dev/null -w '%{http_code}' \
-            -H "Authorization: Bearer $GITHUB_TOKEN" \
-            "https://api.github.com/repos/$GITHUB_REPOSITORY/pages")
-
-          echo "Pages API status: $code"
-
-          if [ "$code" = "404" ]; then
-            echo "首次运行: 启用 GitHub Pages"
-
-            curl -sS -X PUT \
-              -H "Authorization: Bearer $GITHUB_TOKEN" \
-              -H "Content-Type: application/json" \
-              -d '{"build_type":"workflow","source":{"branch":"main","path":"/"}}' \
-              "https://api.github.com/repos/$GITHUB_REPOSITORY/pages"
-
-            echo
-            sleep 10
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          mkdir -p .keepalive
+          date -u +"%Y-%m-%dT%H:%M:%SZ" > .keepalive/last_run.txt
+          git add .keepalive/last_run.txt
+          if git diff --cached --quiet; then
+            echo "无变化，跳过 commit"
+          else
+            git commit -m "chore: keep-alive $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            git push
           fi
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      # ===== Pages 部署 =====
       - name: Configure Pages
         uses: actions/configure-pages@v6
 
