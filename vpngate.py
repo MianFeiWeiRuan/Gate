@@ -407,7 +407,7 @@ def build_outputs(results, raw_count, sstp_count, source):
     return data
 
 
-CHAIN_URL = os.environ.get("CHAIN_URL", "https://jerylihub.github.io/gate/chains.txt")
+CHAIN_URL = os.environ.get("CHAIN_URL", "https://MianFeiWeiRuan.github.io/Gate/chains.txt")
 
 
 def build_chains_text(data):
@@ -466,7 +466,7 @@ EDGE_HOSTS = [
     if h.strip()
 ]
 
-HOSTS_URL = os.environ.get("HOSTS_URL", "https://jerylihub.github.io/gate/hosts.txt")
+HOSTS_URL = os.environ.get("HOSTS_URL", "https://MianFeiWeiRuan.github.io/Gate/hosts.txt")
 
 
 def build_hosts_text(data):
@@ -525,7 +525,7 @@ def build_hosts_text(data):
 EDT_UUID = os.environ.get("EDT_UUID", "dd1289f7-4fee-4504-8ed6-674456c48130")
 EDT_DOMAIN = os.environ.get("EDT_DOMAIN", "fci.us.ci")
 EDT_FINGERPRINT = os.environ.get("EDT_FINGERPRINT", "chrome")
-SUB_URL = os.environ.get("SUB_URL", "https://jerylihub.github.io/gate/sub.txt")
+SUB_URL = os.environ.get("SUB_URL", "https://MianFeiWeiRuan.github.io/Gate/sub.txt")
 
 
 def _b64_secret_encode(plaintext, secret):
