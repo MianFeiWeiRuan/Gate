@@ -1,13 +1,13 @@
 name: VPN Gate Node Check
 
 on:
-  # 每 30 分钟运行一次（UTC 时间）
+  # 每 2 小时运行一次（UTC 偶数点：0、2、4…22）
   schedule:
-    - cron: "*/30 * * * *"
+    - cron: "0 */2 * * *"
   workflow_dispatch:
 
 permissions:
-  contents: write      # 改：keep-alive commit 需要写权限
+  contents: write
   pages: write
   id-token: write
 
@@ -39,7 +39,6 @@ jobs:
           CHECK_CONCURRENCY: "32"
           CHECK_TIMEOUT: "90"
 
-      # ===== keep-alive：每次运行都提交一次，防止仓库 60 天休眠 =====
       - name: Keep-alive commit
         run: |
           git config user.name  "github-actions[bot]"
@@ -47,14 +46,9 @@ jobs:
           mkdir -p .keepalive
           date -u +"%Y-%m-%dT%H:%M:%SZ" > .keepalive/last_run.txt
           git add .keepalive/last_run.txt
-          if git diff --cached --quiet; then
-            echo "无变化，跳过 commit"
-          else
-            git commit -m "chore: keep-alive $(date -u +%Y-%m-%dT%H:%M:%SZ)"
-            git push
-          fi
+          git commit -m "chore: keep-alive $(date -u +%Y-%m-%dT%H:%M:%SZ)" || echo "无变化，跳过"
+          git push
 
-      # ===== Pages 部署 =====
       - name: Configure Pages
         uses: actions/configure-pages@v6
 
