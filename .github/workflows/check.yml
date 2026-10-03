@@ -1,7 +1,7 @@
 name: VPN Gate Node Check
 
 on:
-  # 定时检测: 默认每 30 分钟一次。改成每 60 分钟: cron: "0 * * * *"
+  # 每 30 分钟运行一次
   schedule:
     - cron: "*/30 * * * *"
   workflow_dispatch:
@@ -17,14 +17,16 @@ concurrency:
 
 jobs:
   check:
-    runs-on: ubuntu-latest
+    # 固定 Ubuntu 24.04，避免 ubuntu-latest 在 2026-10-19 后迁移到 Ubuntu 26
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
+
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Setup Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.11"
 
@@ -34,7 +36,7 @@ jobs:
       - name: Get VPN Gate nodes + check via Cloudflare Worker + build page
         run: python vpngate.py
         env:
-          # 已部署的检测 Worker (不要改动: 检测统一走这里)
+          # 已部署的检测 Worker
           CHECK_WORKER: "https://fco.us.ci/check?sstp=vpn:vpn@"
           CHECK_CONCURRENCY: "32"
           CHECK_TIMEOUT: "90"
@@ -44,14 +46,18 @@ jobs:
           code=$(curl -s -o /dev/null -w '%{http_code}' \
             -H "Authorization: Bearer $GITHUB_TOKEN" \
             "https://api.github.com/repos/$GITHUB_REPOSITORY/pages")
+
           echo "Pages API status: $code"
+
           if [ "$code" = "404" ]; then
-            echo "首次运行: 启用 GitHub Pages (source = GitHub Actions, 目录 /public)"
+            echo "首次运行: 启用 GitHub Pages"
+
             curl -sS -X PUT \
               -H "Authorization: Bearer $GITHUB_TOKEN" \
               -H "Content-Type: application/json" \
-              -d '{"build_type":"workflow","source":{"branches":["main"],"path":"/public"}}' \
+              -d '{"build_type":"workflow","source":{"branch":"main","path":"/"}}' \
               "https://api.github.com/repos/$GITHUB_REPOSITORY/pages"
+
             echo
             sleep 10
           fi
@@ -59,16 +65,18 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Configure Pages
-        uses: actions/configure-pages@v5
+        uses: actions/configure-pages@v6
 
       - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v4
         with:
-          path: 'public'
+          path: "public"
 
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
 
       - name: Show site URL
-        run: 'echo "site: https://MianFeiWeiRuan.github.io/Gate/ (deploy outcome: ${{ steps.deployment.outcome }})"'
+        run: |
+          echo "site: https://MianFeiWeiRuan.github.io/Gate/"
+          echo "deploy outcome: ${{ steps.deployment.outcome }}"
