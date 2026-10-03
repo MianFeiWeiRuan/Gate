@@ -1,29 +1,35 @@
 name: VPN Gate Node Check
 
 on:
+  # 定时检测: 默认每 30 分钟一次。改成每 60 分钟: cron: "0 * * * *"
   schedule:
-    - cron: '*/30 * * * *'
+    - cron: "*/30 * * * *"
   workflow_dispatch:
 
-jobs:
-  run:
-    runs-on: ubuntu-latest
+permissions:
+  contents: read
+  pages: write
+  id-token: write
 
+concurrency:
+  group: gate-check
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
-      - name: 拉取代码
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: 安装 Python
+      - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: "3.11"
 
-      - name: 安装依赖
-        run: |
-          pip install -r requirements.txt
-
-      - name: 运行代码
-        run: python main.py
+      - name: Install dependencies
+        run: pip install -r requirements.txt
 
       - name: Get VPN Gate nodes + check via Cloudflare Worker + build page
         run: python vpngate.py
