@@ -51,7 +51,7 @@ VPNGATE_MIRROR = os.environ.get(
     "https://raw.githubusercontent.com/fdciabdul/Vpngate-Scraper-API/main/json/data.json",
 )
 # 已部署的 Cloudflare Worker 检测接口 (GET /check?proxyip=host:port, 实测确认)
-WORKER_CHECK_URL = os.environ.get("CHECK_WORKER", "fco.us.ci/check?sstp=vpn:vpn@")
+WORKER_CHECK_URL = os.environ.get("CHECK_WORKER", "https://fco.us.ci/check?sstp=vpn:vpn@")
 CONCURRENCY = max(1, int(os.environ.get("CHECK_CONCURRENCY", "32")))   # 与 Worker 网页端一致的并发模型
 CHECK_TIMEOUT = float(os.environ.get("CHECK_TIMEOUT", "90"))          # 单请求客户端超时 (秒)
 MAX_CHECK_NODES = int(os.environ.get("MAX_CHECK_NODES", "0"))         # 0=不限; 本地测试可设小值
@@ -467,6 +467,7 @@ EDGE_HOSTS = [
 ]
 
 HOSTS_URL = os.environ.get("HOSTS_URL", "https://MianFeiWeiRuan.github.io/Gate/hosts.txt")
+NODES_URL = os.environ.get("NODES_URL", "https://MianFeiWeiRuan.github.io/Gate/nodes.txt")
 
 
 def build_hosts_text(data):
@@ -525,7 +526,7 @@ def build_hosts_text(data):
 EDT_UUID = os.environ.get("EDT_UUID", "dd1289f7-4fee-4504-8ed6-674456c48130")
 EDT_DOMAIN = os.environ.get("EDT_DOMAIN", "fci.us.ci")
 EDT_FINGERPRINT = os.environ.get("EDT_FINGERPRINT", "chrome")
-SUB_URL = os.environ.get("SUB_URL", "https://MianFeiWeiRuan.github.io/Gate/sub.txt")
+SUB_URL = os.environ.get("SUB_URL", "https:/MianFeiWeiRuan.github.io/Gate/sub.txt")
 
 
 def _b64_secret_encode(plaintext, secret):
@@ -632,11 +633,17 @@ def write_outputs(data):
     with open(hosts_path, "w", encoding="utf-8") as f:
         f.write(build_hosts_text(data))
 
+    # 纯节点版(无注释): 把 URL 填进 edgetunnel「自定义优选IP」框, 客户端刷新订阅即自动轮换
+    nodes_path = os.path.join(PUBLIC_DIR, "nodes.txt")
+    nodes_lines = [ln for ln in build_hosts_text(data).split("\n") if ln and not ln.startswith("#")]
+    with open(nodes_path, "w", encoding="utf-8") as f:
+        f.write("\n".join(nodes_lines) + ("\n" if nodes_lines else ""))
+
     # 完整 vless:// 订阅 (填进后台「订阅链接」URL, 客户端自动轮换)
     sub_path = os.path.join(PUBLIC_DIR, "sub.txt")
     with open(sub_path, "w", encoding="utf-8") as f:
         f.write(build_sub_text(data))
-    return data_path, html_path, chains_path, hosts_path, sub_path
+    return data_path, html_path, chains_path, hosts_path, nodes_path, sub_path
 
 
 # ---------------------------------------------------------------------------
@@ -688,12 +695,14 @@ def main():
     log("RESULT", f"可用节点: {len(success)}")
     log("RESULT", f"国家数量: {data['stats']['countries']}")
 
-    data_path, html_path, chains_path, hosts_path, sub_path = write_outputs(data)
+    data_path, html_path, chains_path, hosts_path, nodes_path, sub_path = write_outputs(data)
     log("WEBSITE", f"生成 {os.path.relpath(data_path, REPO_DIR)}")
     log("WEBSITE", f"生成 {os.path.relpath(html_path, REPO_DIR)}")
     log("WEBSITE", f"生成 {os.path.relpath(chains_path, REPO_DIR)}")
     log("WEBSITE", f"生成 {os.path.relpath(hosts_path, REPO_DIR)}")
+    log("WEBSITE", f"生成 {os.path.relpath(nodes_path, REPO_DIR)}")
     log("WEBSITE", f"生成 {os.path.relpath(sub_path, REPO_DIR)}")
+    log("USAGE", f"自动轮换: 把 {NODES_URL} 填入 edgetunnel 后台「自定义优选IP」框 (一次配置, 之后每 30 分钟自动更新)")
     log("WEBSITE", "完成 (GitHub Pages 部署由 workflow 执行)")
 
 
