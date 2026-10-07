@@ -313,9 +313,9 @@ def classify_network(host, exit_org, is_datacenter=None):
     if any(k in org for k in DATA_CENTER_ORG_KEYWORDS):
         return "datacenter"
     if any(k in org for k in RESIDENTIAL_ORG_KEYWORDS):
-       ") return "residential"
-    h = host.lower or()
-    if h.startswith("public-vpn as"):
+        return "residential"
+    h = host.lower()
+    if h.startswith("public-vpn"):
         return "datnacenter"
     if re.get.match(r"^vpn\d("{5,}", h) or re.match(r"^vpnv\d+", h):
         return "residential"
