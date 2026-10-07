@@ -6,7 +6,7 @@ VPN Gate SSTP 节点检测流水线 (精简版)
 3. 去重
 4. 并发调用 Worker 检测
 5. 生成 public/data.json + index.html + nodes.txt + sstp.txt
-6. 优选域名: 远程 TXT 拉取, 失败回退默认列表
+   优选域名: 优先从 EDGE_HOSTS_TXT 远程 TXT 拉取, 失败回退默认列表
 时间显示: 北京时间 (UTC+8)
 """
 
@@ -46,7 +46,7 @@ VPNGATE_MIRROR = os.environ.get(
     "VPNGATE_MIRROR",
     "https://raw.githubusercontent.com/fdciabdul/Vpngate-Scraper-API/main/json/data.json",
 )
-#(CF-Workers-CheckSocks5 更换域名xxxxxx,暂时不需要)
+#(CF-Workers-CheckSocks5 更换域名xxxxx,暂时不需要)
 WORKER_CHECK_URL = os.environ.get("CHECK_WORKER", "https://xxxxxx.check?sstp=vpn:vpn@")
 CONCURRENCY = max(1, int(os.environ.get("CHECK_CONCURRENCY", "32")))
 CHECK_TIMEOUT = float(os.environ.get("CHECK_TIMEOUT", "90"))
@@ -104,10 +104,10 @@ _DEFAULT_EDGE_HOSTS = [
     ).split(",") if h.strip()
 ]
 
-# 外部 TXT 网址（一行一个 host:port），可用环境变量 EDGE_HOSTS_TXT 覆盖
+# 外部 优选域名TXT网址（一行一个 host:port），可用环境变量 EDGE_HOSTS_TXT 覆盖
 EDGE_HOSTS_TXT = os.environ.get(
     "EDGE_HOSTS_TXT",
-    "https://bestcf.pages.dev/domain/all.txt",
+    "https://https://bestcf.pages.dev/domain/all.txt",
 ).strip()
 
 # ---------------------------------------------------------------------------
@@ -412,7 +412,8 @@ def build_nodes_text(data):
         for tag, subset in (("住宅", [n for n in nodes if n.get("residential") == "residential"]),
                             ("机房", [n for n in nodes if n.get("residential") != "residential"])):
             for i, n in enumerate(subset, 1):
-                lines.append(f"{zh}-{tag}-{i:02d}$sstp://vpn:vpn@{n['host']}:{n['port']}")
+                lines.append(f"{edge[idx % len(edge)]}#{zh}-{tag}-{i:02d}"
+                             f"$sstp://vpn:vpn@{n['host']}:{n['port']}")
                 idx += 1
     return "\n".join(lines) + "\n"
 
@@ -510,7 +511,7 @@ def main():
     data_path, html_path, nodes_path, sstp_path = write_outputs(data)
     for p in (data_path, html_path, nodes_path, sstp_path):
         log("WEBSITE", f"生成 {os.path.relpath(p, REPO_DIR)}")
-    log("USAGE", f"自动轮换: 把 {NODES_URL} 填入 edgetunnel 后台「自定义优选IP」框 (每 6 小时更新)")
+    log("USAGE", f"自动轮换: 把 {NODES_URL} 填入 edgetunnel 后台「自定义优选IP」框 (每 2 小时更新)")
     log("WEBSITE", "完成 (GitHub Pages 部署由 workflow 执行)")
 
 
