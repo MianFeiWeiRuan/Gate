@@ -1,0 +1,74 @@
+name: VPN Gate Node Check
+
+on:
+  schedule:
+    - cron: "0 */6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: gate-check
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Get VPN Gate nodes + check via Cloudflare Worker + build page
+        run: python vpngate.py
+        env:
+          CHECK_WORKER: ${{ secrets.DOMAIN }}
+          CHECK_CONCURRENCY: "32"
+          CHECK_TIMEOUT: "90"
+          # MAX_CHECK_NODES: "20"   # 首次调试临时打开, 上线后删掉
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v6
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: "public"
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+      - name: Keep-alive commit
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          mkdir -p .keepalive
+          BJ_NOW=$(TZ=Asia/Shanghai date +"%Y-%m-%d %H:%M:%S 北京")
+          echo "$BJ_NOW" > .keepalive/last_run.txt
+          git add .keepalive/last_run.txt
+          if git diff --cached --quiet; then
+            echo "无变化，跳过 commit"
+          else
+            git commit -m "chore: keep-alive $BJ_NOW"
+            git push
+          fi
+
+      - name: Show site URL
+        if: always()
+        run: |
+          echo "site: https://MianFeiWeiRuan.github.io/Gate/"
+          echo "deploy outcome: ${{ steps.deployment.outcome }}"
