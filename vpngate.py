@@ -107,7 +107,7 @@ _DEFAULT_EDGE_HOSTS = [
 # 外部 TXT 网址（一行一个 host:port），可用环境变量 EDGE_HOSTS_TXT 覆盖
 EDGE_HOSTS_TXT = os.environ.get(
     "EDGE_HOSTS_TXT",
-    "https://bestcf.pages.dev/domain/Domain-Asia.txt",
+    "https://bestcf.pages.dev/random-region/JP/50.txt",
 ).strip()
 
 # ---------------------------------------------------------------------------
@@ -396,9 +396,7 @@ def build_outputs(results, raw_count, sstp_count, source):
 
 
 def build_nodes_text(data):
-    entry = os.environ.get("HOSTS_ENTRY", "").strip()
-    edge = [e.strip() for e in entry.split(",") if e.strip()] or load_edge_hosts()
-    lines, idx = [], 0
+    lines = []
     ordered = sorted(data["countries"].items(),
                      key=lambda kv: (-int(kv[1].get("count") or 0), str(kv[1].get("code") or kv[0])))
     for cname, grp in ordered:
@@ -412,9 +410,7 @@ def build_nodes_text(data):
         for tag, subset in (("住宅", [n for n in nodes if n.get("residential") == "residential"]),
                             ("机房", [n for n in nodes if n.get("residential") != "residential"])):
             for i, n in enumerate(subset, 1):
-                lines.append(f"{edge[idx % len(edge)]}#{zh}-{tag}-{i:02d}"
-                             f"$sstp://vpn:vpn@{n['host']}:{n['port']}")
-                idx += 1
+                lines.append(f"{zh}-{tag}-{i:02d}$sstp://vpn:vpn@{n['host']}:{n['port']}")
     return "\n".join(lines) + "\n"
 
 
