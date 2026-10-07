@@ -396,7 +396,9 @@ def build_outputs(results, raw_count, sstp_count, source):
 
 
 def build_nodes_text(data):
-    lines = []
+    entry = os.environ.get("HOSTS_ENTRY", "").strip()
+    edge = [e.strip() for e in entry.split(",") if e.strip()] or load_edge_hosts()
+    lines, idx = [], 0
     ordered = sorted(data["countries"].items(),
                      key=lambda kv: (-int(kv[1].get("count") or 0), str(kv[1].get("code") or kv[0])))
     for cname, grp in ordered:
@@ -411,6 +413,7 @@ def build_nodes_text(data):
                             ("机房", [n for n in nodes if n.get("residential") != "residential"])):
             for i, n in enumerate(subset, 1):
                 lines.append(f"{zh}-{tag}-{i:02d}$sstp://vpn:vpn@{n['host']}:{n['port']}")
+                idx += 1
     return "\n".join(lines) + "\n"
 
 
