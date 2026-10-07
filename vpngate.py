@@ -107,7 +107,7 @@ _DEFAULT_EDGE_HOSTS = [
 # 外部 优选域名/IP网址 TXT（一行一个 host:port），可用环境变量 EDGE_HOSTS_TXT 覆盖
 EDGE_HOSTS_TXT = os.environ.get(
     "EDGE_HOSTS_TXT",
-    "https://bestcf.pages.dev/random-region/JP/50.txt",
+    "https://bestcf.pages.dev/random-region/HK/50.txt",
 ).strip()
 
 # ---------------------------------------------------------------------------
