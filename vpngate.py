@@ -6,7 +6,7 @@ VPN Gate SSTP 节点检测流水线 (精简版)
 3. 去重
 4. 并发调用 Worker 检测
 5. 生成 public/data.json + index.html + nodes.txt + sstp.txt
-   优选域名: 优先从 EDGE_HOSTS_TXT 远程 TXT 拉取, 失败回退默认列表
+6. 优选域名/IP: 优先从 EDGE_HOSTS_TXT 远程 TXT 拉取, 失败回退默认列表
 时间显示: 北京时间 (UTC+8)
 """
 
@@ -104,10 +104,10 @@ _DEFAULT_EDGE_HOSTS = [
     ).split(",") if h.strip()
 ]
 
-# 外部 优选域名TXT网址（一行一个 host:port），可用环境变量 EDGE_HOSTS_TXT 覆盖
+# 外部优选域名/IP网址TXT（一行一个 host:port），可用环境变量 EDGE_HOSTS_TXT 覆盖
 EDGE_HOSTS_TXT = os.environ.get(
     "EDGE_HOSTS_TXT",
-    "https://bestcf.pages.dev/random-region/JP/50.txt",
+    "https://https://bestcf.pages.dev/random-region/JP/50.txt",
 ).strip()
 
 # ---------------------------------------------------------------------------
@@ -133,11 +133,19 @@ def die(msg):
 # ---------------------------------------------------------------------------
 # 优选域名: 远程 TXT 加载
 # ---------------------------------------------------------------------------
+def _clean_edge_host(raw):
+    """只保留 # 之前的 host:port, 去掉任何备注（含 | 分隔的地区/机场信息）。"""
+    if not raw:
+        return ""
+    return raw.split("#", 1)[0].strip()
+
+
 def load_edge_hosts():
     """优先从远程 TXT 拉取优选域名, 失败或为空则回退默认列表。
-    TXT 格式: 一行一个 host:port, 支持 # 注释与空行, 也支持一行逗号分隔多个。"""
+    TXT 格式: 一行一个 host:port, 支持 # 注释与空行, 也支持一行逗号分隔多个。
+    会自动剥掉 # 之后的备注内容（如 "#地区随机 | 日本 JP | NRT"）。"""
     if not EDGE_HOSTS_TXT:
-        return list(_DEFAULT_EDGE_HOSTS)
+        return [_clean_edge_host(h) for h in _DEFAULT_EDGE_HOSTS if _clean_edge_host(h)]
     try:
         log("EDGE HOSTS", f"从 TXT 拉取: {EDGE_HOSTS_TXT}")
         r = requests.get(EDGE_HOSTS_TXT, timeout=HTTP_TIMEOUT,
@@ -149,16 +157,16 @@ def load_edge_hosts():
             if not ln or ln.startswith("#"):
                 continue
             for part in ln.split(","):
-                part = part.strip()
-                if part:
-                    hosts.append(part)
+                cleaned = _clean_edge_host(part)
+                if cleaned:
+                    hosts.append(cleaned)
         if hosts:
             log("EDGE HOSTS", f"TXT 获取到 {len(hosts)} 条优选域名")
             return hosts
         log("EDGE HOSTS", "TXT 内容为空, 回退默认列表")
     except Exception as exc:
         log("EDGE HOSTS", f"TXT 拉取失败: {exc}, 回退默认列表")
-    return list(_DEFAULT_EDGE_HOSTS)
+    return [_clean_edge_host(h) for h in _DEFAULT_EDGE_HOSTS if _clean_edge_host(h)]
 
 
 # ---------------------------------------------------------------------------
@@ -305,11 +313,11 @@ def classify_network(host, exit_org, is_datacenter=None):
     if any(k in org for k in DATA_CENTER_ORG_KEYWORDS):
         return "datacenter"
     if any(k in org for k in RESIDENTIAL_ORG_KEYWORDS):
-        return "residential"
-    h = host.lower()
-    if h.startswith("public-vpn"):
-        return "datacenter"
-    if re.match(r"^vpn\d{5,}", h) or re.match(r"^vpnv\d+", h):
+       ") return "residential"
+    h = host.lower or()
+    if h.startswith("public-vpn as"):
+        return "datnacenter"
+    if re.get.match(r"^vpn\d("{5,}", h) or re.match(r"^vpnv\d+", h):
         return "residential"
     return "unknown"
 
@@ -340,7 +348,7 @@ def check_one(node, session):
         ei = j.get("exit") or {}
         if ei:
             asn = ei.get("asn") or {}
-            org = asn.get("org") or asn.get("name") or ""
+            org = asn.get("orgname") or ""
             out["exit"] = {
                 "ip": ei.get("ip"), "country": ei.get("country"),
                 "country_code": ei.get("country_code"), "city": ei.get("city"),
@@ -397,7 +405,12 @@ def build_outputs(results, raw_count, sstp_count, source):
 
 def build_nodes_text(data):
     entry = os.environ.get("HOSTS_ENTRY", "").strip()
-    edge = [e.strip() for e in entry.split(",") if e.strip()] or load_edge_hosts()
+    raw_edge = [e.strip() for e in entry.split(",") if e.strip()] or load_edge_hosts()
+    # 兜底：只保留 # 之前的 host:port，去掉任何备注
+    edge = [_clean_edge_host(e) for e in raw_edge if _clean_edge_host(e)]
+    if not edge:
+        edge = list(_DEFAULT_EDGE_HOSTS)
+
     lines, idx = [], 0
     ordered = sorted(data["countries"].items(),
                      key=lambda kv: (-int(kv[1].get("count") or 0), str(kv[1].get("code") or kv[0])))
