@@ -6,7 +6,7 @@ VPN Gate SSTP 节点检测流水线 (精简版)
 3. 去重
 4. 并发调用 Worker 检测
 5. 生成 public/data.json + index.html + nodes.txt + sstp.txt
-6. 优选域名/IP: 优先从 EDGE_HOSTS_TXT 远程 TXT 拉取, 失败回退默认列表
+   优选域名: 优先从 EDGE_HOSTS_TXT 远程 TXT 拉取, 失败回退默认列表
 时间显示: 北京时间 (UTC+8)
 """
 
@@ -104,10 +104,10 @@ _DEFAULT_EDGE_HOSTS = [
     ).split(",") if h.strip()
 ]
 
-# 外部优选域名/IP网址TXT（一行一个 host:port），可用环境变量 EDGE_HOSTS_TXT 覆盖
+# 外部 TXT 网址（一行一个 host:port），可用环境变量 EDGE_HOSTS_TXT 覆盖
 EDGE_HOSTS_TXT = os.environ.get(
     "EDGE_HOSTS_TXT",
-    "https://https://bestcf.pages.dev/random-region/JP/50.txt",
+    "https://raw.githubusercontent.com/MianFeiWeiRuan/Gate/main/edge.txt",
 ).strip()
 
 # ---------------------------------------------------------------------------
@@ -316,8 +316,8 @@ def classify_network(host, exit_org, is_datacenter=None):
         return "residential"
     h = host.lower()
     if h.startswith("public-vpn"):
-        return "datnacenter"
-    if re.get.match(r"^vpn\d("{5,}", h) or re.match(r"^vpnv\d+", h):
+        return "datacenter"
+    if re.match(r"^vpn\d{5,}", h) or re.match(r"^vpnv\d+", h):
         return "residential"
     return "unknown"
 
@@ -348,7 +348,7 @@ def check_one(node, session):
         ei = j.get("exit") or {}
         if ei:
             asn = ei.get("asn") or {}
-            org = asn.get("orgname") or ""
+            org = asn.get("org") or asn.get("name") or ""
             out["exit"] = {
                 "ip": ei.get("ip"), "country": ei.get("country"),
                 "country_code": ei.get("country_code"), "city": ei.get("city"),
